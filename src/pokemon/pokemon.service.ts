@@ -9,6 +9,7 @@ import { UpdatePokemonDto } from './dto/update-pokemon.dto';
 import { Model, isValidObjectId } from 'mongoose';
 import { Pokemon } from './entities/pokemon.entity';
 import { InjectModel } from '@nestjs/mongoose';
+import { PaginationDto } from 'src/common/dto/pagination.dto';
 
 @Injectable()
 export class PokemonService {
@@ -28,14 +29,22 @@ export class PokemonService {
     }
   }
 
-  findAll() {
-    return `This action returns all pokemon`;
+  findAll(paginationDto: PaginationDto) {
+    const { limit = 10, offset = 0 } = paginationDto;
+    return this.pokemonModel
+      .find()
+      .limit(limit)
+      .skip(offset)
+      .sort({
+        no: 1,
+      })
+      .select('-__v');
   }
 
   async findOne(term: string) {
     let pokemon: Pokemon;
 
-    if (isNaN(+term)) {
+    if (!isNaN(+term)) {
       pokemon = await this.pokemonModel.findOne({ no: term });
     }
 
@@ -74,7 +83,7 @@ export class PokemonService {
   async remove(id: string) {
     const { deletedCount } = await this.pokemonModel.deleteOne({ _id: id });
 
-    if( deletedCount === 0)
+    if (deletedCount === 0)
       throw new BadRequestException(`Pokemon with id ${id} not found`);
 
     return;
@@ -92,5 +101,13 @@ export class PokemonService {
     throw new InternalServerErrorException(
       `Can't create Pokemon - Check server logs`,
     );
+  }
+
+  async resetSeed() {
+    await this.pokemonModel.deleteMany({});
+  }
+
+  async populateSeed(pokemons: Pokemon[]) {
+    this.pokemonModel.insertMany(pokemons);
   }
 }
